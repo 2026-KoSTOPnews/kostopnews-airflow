@@ -1,0 +1,72 @@
+x-airflow-common: &airflow-common
+  build: .
+  env_file:
+    - .env
+  environment:
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_DB}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+  volumes:
+    - ./dags:/opt/airflow/dags
+  networks:
+    - mlops-network
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - mlops-network
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    env_file:
+      - .env
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - mlops-network
+  airflow-init:
+    <<: *airflow-common
+    depends_on:
+      - postgres
+      - redis
+    entrypoint: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create
+      --username ${AIRFLOW_ADMIN_USERNAME}
+      --password ${AIRFLOW_ADMIN_PASSWORD}
+      --firstname ${AIRFLOW_ADMIN_FIRSTNAME}
+      --lastname ${AIRFLOW_ADMIN_LASTNAME}
+      --role Admin
+      --email ${AIRFLOW_ADMIN_EMAIL} || true"
+  airflow-webserver:
+    <<: *airflow-common
+    depends_on:
+      - postgres
+      - redis
+      - airflow-init
+    ports:
+      - "8080:8080"
+    command: webserver
+  airflow-scheduler:
+    <<: *airflow-common
+    depends_on:
+      - postgres
+      - redis
+      - airflow-init
+    command: scheduler
+
+networks:
+  mlops-network:
+    external: true
