@@ -11,7 +11,7 @@ from services.rss_service import fetch_rss
 with DAG(
     dag_id="rss_news_postgres_pipeline",
     start_date=datetime(2026, 6, 30),
-    schedule="0 */2 * * *",
+    schedule="0 * * * *",
     catchup=False
 ) as dag:
     fetch_rss_task  = PythonOperator(
