@@ -9,7 +9,7 @@ from task.news_sentiment_pipeline_tasks import fetch_data
 with DAG(
     dag_id="news_sentiment_pipeline",
     start_date=datetime(2026, 6, 30),
-    schedule="*/10 * * * *",
+    schedule="*/30 * * * *",
     catchup=False
 ) as dag:
     fetch_data_task = PythonOperator(
