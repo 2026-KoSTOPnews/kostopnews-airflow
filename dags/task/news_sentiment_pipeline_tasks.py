@@ -29,7 +29,7 @@ def fetch_data(**context):
             WHERE na.article_id = a.id
               AND na.company_id = m.company_id
         )
-        LIMIT 5;
+        LIMIT 10;
         """
 
     cur.execute(query)

@@ -78,13 +78,18 @@ def extract_companies(**context):
 # -------------------------
 def calculate_company_score(text: str, aliases: List[str]) -> float:
     score = 0.0
+    company_matched = False
 
     text = text.lower()
 
     # alias matching
     for alias in aliases:
         if alias.lower() in text:
+            company_matched = True
             score += 0.6
+
+    if not company_matched:
+        return 0.0
 
     # keyword boost
     if any(k in text for k in ["실적", "투자", "증설", "계약"]):
