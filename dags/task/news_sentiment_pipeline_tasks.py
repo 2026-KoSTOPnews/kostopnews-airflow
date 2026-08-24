@@ -101,7 +101,7 @@ def call_sentiment_batch(**context):
     data = context["ti"].xcom_pull(task_ids="fetch_data")
 
     res = requests.post(
-        "http://fastapi:8000/sentiment/batch",
+        f"{settings.FASTAPI_BASE_URL}/sentiment/batch",
         json=data,
         timeout=600
     )
