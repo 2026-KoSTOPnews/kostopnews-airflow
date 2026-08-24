@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "root"
     POSTGRES_PORT: int = 5432
 
+    FASTAPI_BASE_URL: str = "http://fastapi:8000"
+
     MODEL_VERSION: str = "gemini-2.5-flash-lite"
 
     model_config = SettingsConfigDict(

@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import datetime
+import pendulum
 
 from services.content_service import fetch_article_content
 from services.article_service import deduplicate_articles
@@ -10,7 +10,7 @@ from services.rss_service import fetch_rss
 
 with DAG(
     dag_id="rss_news_postgres_pipeline",
-    start_date=datetime(2026, 6, 30),
+    start_date=pendulum.datetime(2026, 6, 30, tz="Asia/Seoul"),
     schedule="0 * * * *",
     catchup=False
 ) as dag:
