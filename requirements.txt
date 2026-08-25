@@ -1,6 +1,5 @@
 # pip install -r requirements.txt
 
-apache-airflow==2.8.1
 psycopg2-binary
 pydantic_settings
 python-dotenv
