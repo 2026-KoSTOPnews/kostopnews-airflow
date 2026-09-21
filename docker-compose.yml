@@ -1,5 +1,5 @@
 x-airflow-common: &airflow-common
-  build: .
+  image: boyeongg/kostopnews-airflow:latest
   env_file:
     - .env
   environment:
