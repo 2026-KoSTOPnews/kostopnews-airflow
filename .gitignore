@@ -74,12 +74,3 @@ docker-compose.override.yml
 # =========================
 data/
 datasets/
-
-# =========================
-# Model files
-# =========================
-models/
-*.pt
-*.pth
-*.bin
-*.onnx
