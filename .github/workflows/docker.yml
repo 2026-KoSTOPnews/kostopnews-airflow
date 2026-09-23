@@ -69,6 +69,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/kostopnews/kostopnews-airflow
+            git pull origin main
             docker compose pull
             docker compose up -d
             docker image prune -f
