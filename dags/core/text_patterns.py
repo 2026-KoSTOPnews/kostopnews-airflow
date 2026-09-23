@@ -8,6 +8,8 @@ EMOJI_PATTERN = (
     r"]+"
 )
 
+EMAIL_PATTERN = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
+
 # -------------------------
 # 노이즈 키워드
 # -------------------------
@@ -25,7 +27,8 @@ NOISE_PATTERNS = [
     r".*AI\s*학습\s*활용.*",
     r"[■▲◆●▪︎▶►※]",
     r"Key\s*Points\s*-?\s*",
-    EMOJI_PATTERN
+    EMOJI_PATTERN,
+    EMAIL_PATTERN
 ]
 
 COMMON_PATTERNS = [
