@@ -2,6 +2,7 @@
 
 psycopg2-binary
 pydantic_settings
+python-dateutil
 python-dotenv
 requests
 rapidfuzz
