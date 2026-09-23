@@ -81,10 +81,80 @@ def aggregate_sentiment_periods(**context):
     return results
 
 # -------------------------
+# 감정 분석 재집계
+# -------------------------
+def reaggregate_sentiment_periods(**context):
+    execution_date = context["logical_date"].date()
+
+    results = []
+
+    # -------------------------
+    # DAILY : 7일 전 하루만 재집계
+    # -------------------------
+    daily_date = execution_date - timedelta(days=7)
+    daily_start, daily_end = get_date_range(daily_date)
+
+    results.extend(
+        aggregate_sentiment(
+            "DAILY",
+            daily_start,
+            daily_end
+        )
+    )
+
+    # -------------------------
+    # WEEKLY : 지난주
+    # 월요일에만 재집계
+    # -------------------------
+    if execution_date.weekday() == 0:
+        weekly_end = execution_date
+        weekly_start = weekly_end - timedelta(days=7)
+
+        results.extend(
+            aggregate_sentiment(
+                "WEEKLY",
+                datetime.combine(
+                    weekly_start,
+                    datetime.min.time()
+                ),
+                datetime.combine(
+                    weekly_end,
+                    datetime.min.time()
+                )
+            )
+        )
+
+    # -------------------------
+    # MONTHLY : 지난달
+    # 매월 1일에만 재집계
+    # -------------------------
+    if execution_date.day == 1:
+        monthly_end = execution_date
+        monthly_start = monthly_end - relativedelta(months=1)
+
+        results.extend(
+            aggregate_sentiment(
+                "MONTHLY",
+                datetime.combine(
+                    monthly_start,
+                    datetime.min.time()
+                ),
+                datetime.combine(
+                    monthly_end,
+                    datetime.min.time()
+                )
+            )
+        )
+
+    return results
+
+# -------------------------
 # 집계 결과 저장
 # -------------------------
 def store_sentiment_aggregate(**context):
-    results = context["ti"].xcom_pull(task_ids="aggregate_sentiment_periods")
+    source_task_id = context["params"]["source_task_id"]
+
+    results = context["ti"].xcom_pull(task_ids=source_task_id)
 
     if not results:
         return
@@ -114,7 +184,8 @@ def store_sentiment_aggregate(**context):
                 positive_count = EXCLUDED.positive_count,
                 negative_count = EXCLUDED.negative_count,
                 neutral_count = EXCLUDED.neutral_count,
-                sentiment_score = EXCLUDED.sentiment_score
+                sentiment_score = EXCLUDED.sentiment_score,
+                updated_at = NOW()
             """,
             (
                 result["company_id"],
