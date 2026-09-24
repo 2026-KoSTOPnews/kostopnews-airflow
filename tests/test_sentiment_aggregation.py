@@ -20,9 +20,10 @@ def test_reaggregate_sentiment_periods(mocker):
 
     calls = mock_aggregate.call_args_list
 
+    # DAILY : 5일 전
     assert calls[0].args[0] == "DAILY"
-    assert calls[0].args[1] == datetime(2026, 9, 16)
-    assert calls[0].args[2] == datetime(2026, 9, 17)
+    assert calls[0].args[1] == datetime(2026, 9, 18)
+    assert calls[0].args[2] == datetime(2026, 9, 19)
 
 
 def test_reaggregate_sentiment_periods_weekly(mocker):
@@ -31,9 +32,9 @@ def test_reaggregate_sentiment_periods_weekly(mocker):
         return_value=[]
     )
 
-    # 월요일 -> DAILY + WEEKLY 실행
+    # 토요일 -> DAILY + WEEKLY 실행
     context = {
-        "logical_date": datetime(2026, 9, 21)
+        "logical_date": datetime(2026, 9, 26)
     }
 
     reaggregate_sentiment_periods(**context)
@@ -42,12 +43,12 @@ def test_reaggregate_sentiment_periods_weekly(mocker):
 
     calls = mock_aggregate.call_args_list
 
-    # DAILY
+    # DAILY : 5일 전
     assert calls[0].args[0] == "DAILY"
-    assert calls[0].args[1] == datetime(2026, 9, 14)
-    assert calls[0].args[2] == datetime(2026, 9, 15)
+    assert calls[0].args[1] == datetime(2026, 9, 21)
+    assert calls[0].args[2] == datetime(2026, 9, 22)
 
-    # WEEKLY : 지난주 월~일
+    # WEEKLY : 전주 월~일
     assert calls[1].args[0] == "WEEKLY"
     assert calls[1].args[1] == datetime(2026, 9, 14)
     assert calls[1].args[2] == datetime(2026, 9, 21)
@@ -59,9 +60,9 @@ def test_reaggregate_sentiment_periods_monthly(mocker):
         return_value=[]
     )
 
-    # 1일 -> DAILY + MONTHLY 실행
+    # 10일 -> DAILY + MONTHLY 실행
     context = {
-        "logical_date": datetime(2026, 10, 1)
+        "logical_date": datetime(2026, 11, 10)
     }
 
     reaggregate_sentiment_periods(**context)
@@ -70,15 +71,15 @@ def test_reaggregate_sentiment_periods_monthly(mocker):
 
     calls = mock_aggregate.call_args_list
 
-    # DAILY
+    # DAILY : 5일 전
     assert calls[0].args[0] == "DAILY"
-    assert calls[0].args[1] == datetime(2026, 9, 24)
-    assert calls[0].args[2] == datetime(2026, 9, 25)
+    assert calls[0].args[1] == datetime(2026, 11, 5)
+    assert calls[0].args[2] == datetime(2026, 11, 6)
 
     # MONTHLY : 지난달 전체
     assert calls[1].args[0] == "MONTHLY"
-    assert calls[1].args[1] == datetime(2026, 9, 1)
-    assert calls[1].args[2] == datetime(2026, 10, 1)
+    assert calls[1].args[1] == datetime(2026, 10, 1)
+    assert calls[1].args[2] == datetime(2026, 11, 1)
 
 
 def test_store_sentiment_aggregate(mocker):
