@@ -89,9 +89,9 @@ def reaggregate_sentiment_periods(**context):
     results = []
 
     # -------------------------
-    # DAILY : 7일 전 하루만 재집계
+    # DAILY : 5일 전 하루만 재집계
     # -------------------------
-    daily_date = execution_date - timedelta(days=7)
+    daily_date = execution_date - timedelta(days=5)
     daily_start, daily_end = get_date_range(daily_date)
 
     results.extend(
@@ -103,11 +103,11 @@ def reaggregate_sentiment_periods(**context):
     )
 
     # -------------------------
-    # WEEKLY : 지난주
-    # 월요일에만 재집계
+    # WEEKLY : 전주
+    # 토요일에만 재집계
     # -------------------------
-    if execution_date.weekday() == 0:
-        weekly_end = execution_date
+    if execution_date.weekday() == 5:
+        weekly_end = execution_date - timedelta(days=5)
         weekly_start = weekly_end - timedelta(days=7)
 
         results.extend(
@@ -126,10 +126,10 @@ def reaggregate_sentiment_periods(**context):
 
     # -------------------------
     # MONTHLY : 지난달
-    # 매월 1일에만 재집계
+    # 매월 10일에 재집계
     # -------------------------
-    if execution_date.day == 1:
-        monthly_end = execution_date
+    if execution_date.day == 10:
+        monthly_end = execution_date.replace(day=1)
         monthly_start = monthly_end - relativedelta(months=1)
 
         results.extend(
