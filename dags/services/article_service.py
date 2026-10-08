@@ -7,12 +7,7 @@ from core.keywords import ECONOMY_KEYWORDS
 # -------------------------
 # 중복 제거 + 키워드 필터
 # -------------------------
-def deduplicate_articles(**context):
-    ti = context["ti"]
-
-    articles = ti.xcom_pull(task_ids="fetch_rss")
-    companies = ti.xcom_pull(task_ids="load_companies")
-
+def deduplicate_articles(articles, companies):
     if not articles:
         return []
 

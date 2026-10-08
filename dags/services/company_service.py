@@ -7,7 +7,7 @@ from core.database import DB_CONFIG
 # -------------------------
 # DB에 저장된 기업 로드
 # -------------------------
-def load_companies(**context):
+def load_companies():
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
 
@@ -32,12 +32,7 @@ def load_companies(**context):
 # -------------------------
 # 뉴스 기사  & 기업 매칭
 # -------------------------
-def extract_companies(**context):
-    ti = context["ti"]
-
-    articles = ti.xcom_pull(task_ids="fetch_article_content")
-    companies = ti.xcom_pull(task_ids="load_companies")
-
+def extract_companies(articles, companies):
     if not articles:
         return []
 

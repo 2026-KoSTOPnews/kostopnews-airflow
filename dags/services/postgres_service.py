@@ -3,13 +3,12 @@ import psycopg2
 
 from core.database import DB_CONFIG
 
+BATCH_SIZE = 50
+
 # -------------------------
 # 기사를 DB에 저장
 # -------------------------
-def store_articles(**context):
-    ti = context["ti"]
-    articles = ti.xcom_pull(task_ids="fetch_article_content")
-
+def store_articles(articles):
     if not articles:
         return []
 
@@ -66,10 +65,7 @@ def store_articles(**context):
 # -------------------------
 # mention을 DB에 저장
 # -------------------------
-def store_company_mentions(**context):
-    ti = context["ti"]
-    data = ti.xcom_pull(task_ids="extract_companies")
-
+def store_company_mentions(data):
     if not data:
         return
 
@@ -128,3 +124,39 @@ def store_company_mentions(**context):
     conn.commit()
     cur.close()
     conn.close()
+
+# -------------------------
+# DB에서 배치 별 기업 조회
+# -------------------------
+def get_articles_for_company_extraction(limit=BATCH_SIZE, offset=0):
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                id,
+                title,
+                link,
+                content,
+                source
+            FROM news_articles
+            WHERE content IS NOT NULL
+            ORDER BY id
+            LIMIT %s
+            OFFSET %s
+        """, (limit, offset))
+
+        return [
+            {
+                "id": row[0],
+                "title": row[1],
+                "link": row[2],
+                "content": row[3],
+                "source": row[4],
+            }
+            for row in cur.fetchall()
+        ]
+    finally:
+        cur.close()
+        conn.close()

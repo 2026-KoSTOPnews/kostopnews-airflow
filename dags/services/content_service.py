@@ -1,15 +1,11 @@
 import trafilatura
-import requests
 
 from utils.text_cleaner import clean_content
 
 # -------------------------
 # 기사 본문 가져오기
 # -------------------------
-def fetch_article_content(**context):
-    ti = context["ti"]
-    articles = ti.xcom_pull(task_ids="deduplicate_articles")
-
+def fetch_article_content(articles):
     if not articles:
         return []
 

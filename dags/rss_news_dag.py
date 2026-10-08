@@ -2,11 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 import pendulum
 
-from services.content_service import fetch_article_content
-from services.article_service import deduplicate_articles
-from services.company_service import load_companies, extract_companies
-from services.postgres_service import store_articles, store_company_mentions
-from services.rss_service import fetch_rss
+from task.news_pipeline_tasks import fetch_and_store_news, extract_and_store_companies
 
 with DAG(
     dag_id="rss_news_postgres_pipeline",
@@ -14,45 +10,14 @@ with DAG(
     schedule="0 * * * *",
     catchup=False
 ) as dag:
-    fetch_rss_task  = PythonOperator(
-        task_id="fetch_rss",
-        python_callable=fetch_rss
+    fetch_and_store_news_task = PythonOperator(
+        task_id="fetch_and_store_news",
+        python_callable=fetch_and_store_news
     )
 
-    deduplicate_articles_task = PythonOperator(
-        task_id="deduplicate_articles",
-        python_callable=deduplicate_articles
+    extract_and_store_companies_task = PythonOperator(
+        task_id="extract_and_store_companies",
+        python_callable=extract_and_store_companies
     )
 
-    fetch_article_content_task = PythonOperator(
-        task_id="fetch_article_content",
-        python_callable=fetch_article_content
-    )
-
-    store_articles_task = PythonOperator(
-        task_id="store_articles",
-        python_callable=store_articles
-    )
-
-    load_company_task = PythonOperator(
-        task_id="load_companies",
-        python_callable=load_companies
-    )
-
-    extract_companies_task = PythonOperator(
-        task_id="extract_companies",
-        python_callable=extract_companies
-    )
-
-    store_company_mentions_task = PythonOperator(
-        task_id="store_company_mentions",
-        python_callable=store_company_mentions
-    )
-
-    fetch_rss_task >> deduplicate_articles_task >> fetch_article_content_task
-
-    fetch_article_content_task >> extract_companies_task
-    load_company_task >> extract_companies_task
-
-    extract_companies_task >> store_company_mentions_task
-    fetch_article_content_task >> store_articles_task
+    fetch_and_store_news_task >> extract_and_store_companies_task
