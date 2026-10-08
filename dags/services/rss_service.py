@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 # -------------------------
 # RSS 수집 + 파싱
 # -------------------------
-def fetch_rss(**context):
+def fetch_rss():
     rss_sources = {
         "yna_economy": "https://www.yna.co.kr/rss/economy.xml",
         "hankyung_economy": "https://www.hankyung.com/feed/economy",
