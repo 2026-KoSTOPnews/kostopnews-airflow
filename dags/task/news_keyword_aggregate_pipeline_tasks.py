@@ -89,7 +89,7 @@ def aggregate_keyword_periods():
 # -------------------------
 # 키워드 분석 재집계
 # -------------------------
-def reaggregate_keyword_periods(**context):
+def reaggregate_keyword_periods():
     execution_date = pendulum.now("Asia/Seoul").date()
 
     results = []

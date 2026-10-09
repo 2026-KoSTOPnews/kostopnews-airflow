@@ -88,7 +88,7 @@ def aggregate_sentiment_periods():
 # -------------------------
 # 감정 분석 재집계
 # -------------------------
-def reaggregate_sentiment_periods(**context):
+def reaggregate_sentiment_periods():
     execution_date = pendulum.now("Asia/Seoul").date()
 
     results = []
