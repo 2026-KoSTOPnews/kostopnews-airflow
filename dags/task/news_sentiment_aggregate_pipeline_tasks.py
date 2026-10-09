@@ -1,10 +1,14 @@
+import logging
+
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+import pendulum
 import psycopg2
 
 from core.database import DB_CONFIG
-
 from utils.date_utils import get_date_range
+
+logger = logging.getLogger(__name__)
 
 AGGREGATE_PERIODS = {
     "DAILY": "day",
@@ -15,8 +19,9 @@ AGGREGATE_PERIODS = {
 # -------------------------
 # 감정 분석 집계
 # -------------------------
-def aggregate_sentiment_periods(**context):
-    execution_date = context["logical_date"].date()
+def aggregate_sentiment_periods():
+    execution_date = pendulum.now("Asia/Seoul").date()
+    logger.info(f"[DATE INFO] 기준 날짜 (KST): {execution_date}")
 
     results = []
 
@@ -84,7 +89,7 @@ def aggregate_sentiment_periods(**context):
 # 감정 분석 재집계
 # -------------------------
 def reaggregate_sentiment_periods(**context):
-    execution_date = context["logical_date"].date()
+    execution_date = pendulum.now("Asia/Seoul").date()
 
     results = []
 
