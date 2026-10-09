@@ -1,82 +1,84 @@
 from datetime import datetime
 
+import pendulum
+
 from dags.task.news_sentiment_aggregate_pipeline_tasks import reaggregate_sentiment_periods, store_sentiment_aggregate
 
 
 def test_reaggregate_sentiment_periods(mocker):
+    mocker.patch(
+        "dags.task.news_sentiment_aggregate_pipeline_tasks.pendulum.now",
+        return_value=pendulum.datetime(2026, 9, 23, tz="Asia/Seoul"),
+    )
     mock_aggregate = mocker.patch(
         "dags.task.news_sentiment_aggregate_pipeline_tasks.aggregate_sentiment",
-        return_value=[]
+        return_value=[],
     )
 
     # 수요일 -> DAILY만 실행
-    context = {
-        "logical_date": datetime(2026, 9, 23)
-    }
-
-    reaggregate_sentiment_periods(**context)
+    reaggregate_sentiment_periods()
 
     assert mock_aggregate.call_count == 1
 
     calls = mock_aggregate.call_args_list
 
-    # DAILY : 5일 전
+    # DAILY: 5일 전
     assert calls[0].args[0] == "DAILY"
     assert calls[0].args[1] == datetime(2026, 9, 18)
     assert calls[0].args[2] == datetime(2026, 9, 19)
 
 
 def test_reaggregate_sentiment_periods_weekly(mocker):
+    mocker.patch(
+        "dags.task.news_sentiment_aggregate_pipeline_tasks.pendulum.now",
+        return_value=pendulum.datetime(2026, 9, 26, tz="Asia/Seoul"),
+    )
     mock_aggregate = mocker.patch(
         "dags.task.news_sentiment_aggregate_pipeline_tasks.aggregate_sentiment",
-        return_value=[]
+        return_value=[],
     )
 
     # 토요일 -> DAILY + WEEKLY 실행
-    context = {
-        "logical_date": datetime(2026, 9, 26)
-    }
-
-    reaggregate_sentiment_periods(**context)
+    reaggregate_sentiment_periods()
 
     assert mock_aggregate.call_count == 2
 
     calls = mock_aggregate.call_args_list
 
-    # DAILY : 5일 전
+    # DAILY: 5일 전
     assert calls[0].args[0] == "DAILY"
     assert calls[0].args[1] == datetime(2026, 9, 21)
     assert calls[0].args[2] == datetime(2026, 9, 22)
 
-    # WEEKLY : 전주 월~일
+    # WEEKLY: 전주 월~일
     assert calls[1].args[0] == "WEEKLY"
     assert calls[1].args[1] == datetime(2026, 9, 14)
     assert calls[1].args[2] == datetime(2026, 9, 21)
 
 
 def test_reaggregate_sentiment_periods_monthly(mocker):
+    mocker.patch(
+        "dags.task.news_sentiment_aggregate_pipeline_tasks.pendulum.now",
+        return_value=pendulum.datetime(2026, 11, 10, tz="Asia/Seoul"),
+    )
     mock_aggregate = mocker.patch(
         "dags.task.news_sentiment_aggregate_pipeline_tasks.aggregate_sentiment",
-        return_value=[]
+        return_value=[],
     )
 
-    # 10일 -> DAILY + MONTHLY 실행
-    context = {
-        "logical_date": datetime(2026, 11, 10)
-    }
-
-    reaggregate_sentiment_periods(**context)
+    # 매월 10일 -> DAILY + MONTHLY 실행
+    reaggregate_sentiment_periods()
 
     assert mock_aggregate.call_count == 2
 
     calls = mock_aggregate.call_args_list
 
-    # DAILY : 5일 전
+    # DAILY: 5일 전
     assert calls[0].args[0] == "DAILY"
     assert calls[0].args[1] == datetime(2026, 11, 5)
     assert calls[0].args[2] == datetime(2026, 11, 6)
 
-    # MONTHLY : 지난달 전체
+    # MONTHLY: 지난달 전체
     assert calls[1].args[0] == "MONTHLY"
     assert calls[1].args[1] == datetime(2026, 10, 1)
     assert calls[1].args[2] == datetime(2026, 11, 1)
@@ -105,7 +107,7 @@ def test_store_sentiment_aggregate(mocker):
         "ti": mocker.Mock(),
         "params": {
             "source_task_id": "aggregate_sentiment_periods"
-        }
+        },
     }
 
     context["ti"].xcom_pull.return_value = results

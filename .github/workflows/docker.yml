@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-mock
+          pip install pytest pytest-mock pendulum
 
       - name: Run tests
         env:
