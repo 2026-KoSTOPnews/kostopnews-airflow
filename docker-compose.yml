@@ -8,6 +8,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    # 동시 실행 제한
+    AIRFLOW__CORE__PARALLELISM: "2"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "2"
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
   volumes:
     - ./dags:/opt/airflow/dags
 
