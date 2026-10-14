@@ -4,6 +4,8 @@ import pendulum
 
 from dags.task.news_sentiment_aggregate_pipeline_tasks import reaggregate_sentiment_periods, store_sentiment_aggregate
 
+from unittest.mock import MagicMock
+
 
 def test_reaggregate_sentiment_periods(mocker):
     mocker.patch(
@@ -89,10 +91,11 @@ def test_store_sentiment_aggregate(mocker):
         "dags.task.news_sentiment_aggregate_pipeline_tasks.get_db_connection"
     )
 
-    mock_conn = mocker.Mock()
+    mock_conn = MagicMock()
     mock_db_connection.return_value.__enter__.return_value = mock_conn
 
-    mock_cursor = mock_conn.cursor.return_value.__enter__.return_value
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
 
     results = [
         {
