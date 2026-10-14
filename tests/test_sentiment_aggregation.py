@@ -85,11 +85,14 @@ def test_reaggregate_sentiment_periods_monthly(mocker):
 
 
 def test_store_sentiment_aggregate(mocker):
-    mock_conn = mocker.patch(
-        "dags.task.news_sentiment_aggregate_pipeline_tasks.psycopg2.connect"
+    mock_db_connection = mocker.patch(
+        "dags.task.news_sentiment_aggregate_pipeline_tasks.get_db_connection"
     )
 
-    mock_cursor = mock_conn.return_value.cursor.return_value
+    mock_conn = mocker.Mock()
+    mock_db_connection.return_value.__enter__.return_value = mock_conn
+
+    mock_cursor = mock_conn.cursor.return_value.__enter__.return_value
 
     results = [
         {
@@ -132,4 +135,4 @@ def test_store_sentiment_aggregate(mocker):
         0.4667,
     )
 
-    mock_conn.return_value.commit.assert_called_once()
+    mock_conn.commit.assert_called_once()
