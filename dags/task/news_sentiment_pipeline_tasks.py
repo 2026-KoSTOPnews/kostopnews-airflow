@@ -1,16 +1,13 @@
-import psycopg2
 import requests
 
 from core.config import settings
 from core.database import DB_CONFIG
+from core.database import get_db_connection
 
 # -------------------------
 # 뉴스 데이터 로드
 # -------------------------
-def fetch_data(**context):
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-
+def fetch_data():
     query = """
         SELECT
             a.id AS article_id,
@@ -32,8 +29,10 @@ def fetch_data(**context):
         LIMIT 10;
         """
 
-    cur.execute(query)
-    rows = cur.fetchall()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
 
     result = []
 
@@ -43,11 +42,8 @@ def fetch_data(**context):
             "company_id": r[1],
             "company_name": r[2],
             "title": r[3],
-            "content": r[4]
+            "content": r[4],
         })
-
-    cur.close()
-    conn.close()
 
     return result
 
@@ -57,42 +53,49 @@ def fetch_data(**context):
 def store_news_sentiment(**context):
     results = context["ti"].xcom_pull(task_ids="call_sentiment_batch")
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
+    if not results:
+        return
 
-    for r in results:
+    with get_db_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                for r in results:
+                    if r.get("error"):
+                        continue
 
-        if r.get("error"):
-            continue
+                    cur.execute(
+                        """
+                        INSERT INTO news_analysis (
+                            article_id,
+                            company_id,
+                            summary,
+                            sentiment,
+                            sentiment_score,
+                            model_version
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (article_id, company_id)
+                        DO UPDATE SET
+                            summary = EXCLUDED.summary,
+                            sentiment = EXCLUDED.sentiment,
+                            sentiment_score = EXCLUDED.sentiment_score,
+                            model_version = EXCLUDED.model_version
+                        """,
+                        (
+                            r["article_id"],
+                            r["company_id"],
+                            r["summary"],
+                            r["sentiment"],
+                            r["score"],
+                            settings.MODEL_VERSION,
+                        )
+                    )
 
-        cur.execute("""
-            INSERT INTO news_analysis (
-                article_id,
-                company_id,
-                summary,
-                sentiment,
-                sentiment_score,
-                model_version
-            )
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (article_id, company_id)
-            DO UPDATE SET
-                summary = EXCLUDED.summary,
-                sentiment = EXCLUDED.sentiment,
-                sentiment_score = EXCLUDED.sentiment_score,
-                model_version = EXCLUDED.model_version
-        """, (
-            r["article_id"],
-            r["company_id"],
-            r["summary"],
-            r["sentiment"],
-            r["score"],
-            settings.MODEL_VERSION,
-        ))
+            conn.commit()
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        except Exception:
+            conn.rollback()
+            raise
 
 # -------------------------
 # 뉴스 배치 단위 분석

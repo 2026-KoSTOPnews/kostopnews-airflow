@@ -3,9 +3,9 @@ import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import pendulum
-import psycopg2
 
 from core.database import DB_CONFIG
+from core.database import get_db_connection
 from utils.date_utils import get_date_range
 
 logger = logging.getLogger(__name__)
@@ -164,57 +164,56 @@ def store_sentiment_aggregate(**context):
     if not results:
         return
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                for result in results:
+                    cur.execute(
+                        """
+                        INSERT INTO news_sentiment_aggregate (
+                            company_id,
+                            period_type,
+                            period_start,
+                            positive_count,
+                            negative_count,
+                            neutral_count,
+                            sentiment_score
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (
+                            company_id,
+                            period_type,
+                            period_start
+                        )
+                        DO UPDATE SET
+                            positive_count = EXCLUDED.positive_count,
+                            negative_count = EXCLUDED.negative_count,
+                            neutral_count = EXCLUDED.neutral_count,
+                            sentiment_score = EXCLUDED.sentiment_score,
+                            updated_at = NOW()
+                        """,
+                        (
+                            result["company_id"],
+                            result["period_type"],
+                            result["period_start"],
+                            result["positive_count"],
+                            result["negative_count"],
+                            result["neutral_count"],
+                            result["sentiment_score"],
+                        )
+                    )
 
-    for result in results:
-        cur.execute(
-            """
-            INSERT INTO news_sentiment_aggregate (
-                company_id,
-                period_type,
-                period_start,
-                positive_count,
-                negative_count,
-                neutral_count,
-                sentiment_score
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (
-                company_id,
-                period_type,
-                period_start
-            )
-            DO UPDATE SET
-                positive_count = EXCLUDED.positive_count,
-                negative_count = EXCLUDED.negative_count,
-                neutral_count = EXCLUDED.neutral_count,
-                sentiment_score = EXCLUDED.sentiment_score,
-                updated_at = NOW()
-            """,
-            (
-                result["company_id"],
-                result["period_type"],
-                result["period_start"],
-                result["positive_count"],
-                result["negative_count"],
-                result["neutral_count"],
-                result["sentiment_score"],
-            )
-        )
+            conn.commit()
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        except Exception:
+            conn.rollback()
+            raise
 
 # -------------------------
 # 감정 분석 집계 함수
 # -------------------------
 def aggregate_sentiment(period_type, start_date, end_date):
     period_unit = AGGREGATE_PERIODS[period_type]
-
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
 
     query = f"""
         SELECT
@@ -239,9 +238,10 @@ def aggregate_sentiment(period_type, start_date, end_date):
             DATE_TRUNC('{period_unit}', a.pub_date)
     """
 
-    cur.execute(query, (start_date, end_date))
-
-    rows = cur.fetchall()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
 
     result = []
 
@@ -265,8 +265,5 @@ def aggregate_sentiment(period_type, start_date, end_date):
             "neutral_count": neutral_count,
             "sentiment_score": sentiment_score,
         })
-
-    cur.close()
-    conn.close()
 
     return result
