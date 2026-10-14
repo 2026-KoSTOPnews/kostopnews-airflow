@@ -3,10 +3,10 @@ import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import pendulum
-import psycopg2
 
 from core.database import DB_CONFIG
 from core.keywords import COMPANY_KEYWORDS
+from core.database import get_db_connection
 from utils.date_utils import get_date_range
 
 logger = logging.getLogger(__name__)
@@ -165,45 +165,45 @@ def store_keyword_aggregate(**context):
     if not results:
         return
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                for result in results:
+                    cur.execute(
+                        """
+                        INSERT INTO news_keyword_aggregate (
+                            company_id,
+                            period_type,
+                            period_start,
+                            keyword,
+                            count,
+                            created_at,
+                            updated_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                        ON CONFLICT (
+                            company_id,
+                            period_type,
+                            period_start,
+                            keyword
+                        )
+                        DO UPDATE SET
+                            count = EXCLUDED.count,
+                            updated_at = NOW()
+                        """,
+                        (
+                            result["company_id"],
+                            result["period_type"],
+                            result["period_start"],
+                            result["keyword"],
+                            result["count"],
+                        )
+                    )
 
-    for result in results:
-        cur.execute(
-            """
-            INSERT INTO news_keyword_aggregate (
-                company_id,
-                period_type,
-                period_start,
-                keyword,
-                count,
-                created_at,
-                updated_at
-            )
-            VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
-            ON CONFLICT (
-                company_id,
-                period_type,
-                period_start,
-                keyword
-            )
-            DO UPDATE SET
-                count = EXCLUDED.count,
-                updated_at = NOW()
-            """,
-            (
-                result["company_id"],
-                result["period_type"],
-                result["period_start"],
-                result["keyword"],
-                result["count"],
-            )
-        )
-
-    conn.commit()
-
-    cur.close()
-    conn.close()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
 # -------------------------
 # 키워드 집계 함수
@@ -211,57 +211,55 @@ def store_keyword_aggregate(**context):
 def aggregate_keyword(period_type, start_date, end_date):
     period_unit = AGGREGATE_PERIODS[period_type]
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-
     result = []
 
-    for company_id, keywords in COMPANY_KEYWORDS.items():
-        for keyword in keywords:
-            query = f"""
-                SELECT
-                    %s AS company_id,
-                    DATE_TRUNC('{period_unit}', a.pub_date) AS period_start,
-                    %s AS keyword,
-                    COUNT(DISTINCT a.id) AS keyword_count
-                FROM news_keywords nk
-                JOIN news_articles a
-                    ON nk.article_id = a.id
-                JOIN news_analysis na
-                    ON nk.article_id = na.article_id
-                WHERE na.company_id = %s
-                  AND a.pub_date >= %s
-                  AND a.pub_date < %s
-                  AND nk.keyword IS NOT NULL
-                  AND TRIM(nk.keyword) != ''
-                  AND nk.keyword ILIKE %s
-                GROUP BY
-                    DATE_TRUNC('{period_unit}', a.pub_date)
-            """
-            cur.execute(
-                query,
-                (
-                    company_id,
-                    keyword,
-                    company_id,
-                    start_date,
-                    end_date,
-                    f"%{keyword}%",
-                )
-            )
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            for company_id, keywords in COMPANY_KEYWORDS.items():
+                for keyword in keywords:
+                    query = f"""
+                        SELECT
+                            %s AS company_id,
+                            DATE_TRUNC('{period_unit}', a.pub_date)
+                                AS period_start,
+                            %s AS keyword,
+                            COUNT(DISTINCT a.id) AS keyword_count
+                        FROM news_keywords nk
+                        JOIN news_articles a
+                            ON nk.article_id = a.id
+                        JOIN news_analysis na
+                            ON nk.article_id = na.article_id
+                        WHERE na.company_id = %s
+                          AND a.pub_date >= %s
+                          AND a.pub_date < %s
+                          AND nk.keyword IS NOT NULL
+                          AND TRIM(nk.keyword) != ''
+                          AND nk.keyword ILIKE %s
+                        GROUP BY
+                            DATE_TRUNC('{period_unit}', a.pub_date)
+                    """
 
-            rows = cur.fetchall()
+                    cur.execute(
+                        query,
+                        (
+                            company_id,
+                            keyword,
+                            company_id,
+                            start_date,
+                            end_date,
+                            f"%{keyword}%",
+                        )
+                    )
 
-            for row in rows:
-                result.append({
-                    "company_id": row[0],
-                    "period_type": period_type,
-                    "period_start": row[1],
-                    "keyword": row[2],
-                    "count": row[3],
-                })
+                    rows = cur.fetchall()
 
-    cur.close()
-    conn.close()
+                    for row in rows:
+                        result.append({
+                            "company_id": row[0],
+                            "period_type": period_type,
+                            "period_start": row[1],
+                            "keyword": row[2],
+                            "count": row[3],
+                        })
 
     return result

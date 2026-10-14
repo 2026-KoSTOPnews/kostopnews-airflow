@@ -1,31 +1,26 @@
 from typing import List
 
-import psycopg2
-
 from core.database import DB_CONFIG
+from core.database import get_db_connection
 
 # -------------------------
 # DB에 저장된 기업 로드
 # -------------------------
 def load_companies():
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, aliases
+                FROM companies
+            """)
 
-    cur.execute("""
-    SELECT id, name, aliases
-    FROM companies
-    """)
+            companies = {}
 
-    companies = {}
-
-    for cid, name, aliases in cur.fetchall():
-        companies[name] = {
-            "id": cid,
-            "aliases": aliases or [name]
-        }
-
-    cur.close()
-    conn.close()
+            for cid, name, aliases in cur.fetchall():
+                companies[name] = {
+                    "id": cid,
+                    "aliases": aliases or [name]
+                }
 
     return companies
 
