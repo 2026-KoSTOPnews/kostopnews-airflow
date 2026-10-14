@@ -25,7 +25,7 @@ def get_db_pool():
     if db_pool is None:
         db_pool = ThreadedConnectionPool(
             minconn=1,
-            maxconn=10,
+            maxconn=7,
             **DB_CONFIG,
         )
 
