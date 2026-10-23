@@ -24,7 +24,7 @@ def fetch_keyword_data():
             FROM news_keywords nk
             WHERE nk.article_id = a.id
         )
-        LIMIT 10;
+        LIMIT 30;
     """
 
     with get_db_connection() as conn:

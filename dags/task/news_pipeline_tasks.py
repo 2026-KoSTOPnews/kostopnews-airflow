@@ -7,6 +7,7 @@ from services.company_service import load_companies
 from services.company_service import extract_companies
 from services.postgres_service import store_company_mentions
 from services.postgres_service import get_articles_for_company_extraction
+from services.postgres_service import mark_articles_processed
 
 BATCH_SIZE = 50
 
@@ -39,11 +40,9 @@ def extract_and_store_companies():
     # 1. 기업 조회
     companies = load_companies()
 
-    offset = 0
-
     while True:
-        # 2. DB에서 기사 50개 조회
-        articles = get_articles_for_company_extraction(limit=BATCH_SIZE, offset=offset)
+        # 2. DB에서 미처리 기사만 50개 조회
+        articles = get_articles_for_company_extraction(limit=BATCH_SIZE)
 
         if not articles:
             break
@@ -55,5 +54,5 @@ def extract_and_store_companies():
         if results:
             store_company_mentions(results)
 
-        # 다음 batch
-        offset += BATCH_SIZE
+        article_ids = [article["id"] for article in articles]
+        mark_articles_processed(article_ids)
