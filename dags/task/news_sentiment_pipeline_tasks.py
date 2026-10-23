@@ -26,7 +26,7 @@ def fetch_data():
             WHERE na.article_id = a.id
               AND na.company_id = m.company_id
         )
-        LIMIT 10;
+        LIMIT 30;
         """
 
     with get_db_connection() as conn:

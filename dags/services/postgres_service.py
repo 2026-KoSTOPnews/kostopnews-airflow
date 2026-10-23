@@ -135,22 +135,19 @@ def store_company_mentions(data):
 # -------------------------
 # DB에서 배치 별 기업 조회
 # -------------------------
-def get_articles_for_company_extraction(limit=BATCH_SIZE, offset=0):
+def get_articles_for_company_extraction(limit=BATCH_SIZE):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT
-                    id,
-                    title,
-                    link,
-                    content,
-                    source
+                SELECT id, title, link, content, source
                 FROM news_articles
                 WHERE content IS NOT NULL
+                  AND company_extraction_processed = FALSE
+                  AND created_at >= NOW() - INTERVAL '12 hours'
+                  AND created_at <= NOW()
                 ORDER BY id
                 LIMIT %s
-                OFFSET %s
-            """, (limit, offset))
+            """, (limit,))
             return [
                 {
                     "id": row[0],
@@ -161,3 +158,24 @@ def get_articles_for_company_extraction(limit=BATCH_SIZE, offset=0):
                 }
                 for row in cur.fetchall()
             ]
+
+# -------------------------
+# 기업 매칭 완료 처리
+# -------------------------
+def mark_articles_processed(article_ids):
+    if not article_ids:
+        return
+
+    with get_db_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE news_articles
+                    SET company_extraction_processed = TRUE
+                    WHERE id = ANY(%s)
+                """, (article_ids,))
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise

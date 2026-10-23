@@ -10,7 +10,7 @@ from task.news_keyword_pipeline_tasks import store_news_keywords
 with DAG(
     dag_id="news_keyword_pipeline",
     start_date=pendulum.datetime(2026, 6, 30, tz="Asia/Seoul"),
-    schedule="*/20 * * * *",
+    schedule="30 * * * *",
     catchup=False,
     max_active_runs=1,
 ) as dag:
