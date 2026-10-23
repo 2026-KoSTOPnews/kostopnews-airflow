@@ -143,7 +143,7 @@ def get_articles_for_company_extraction(limit=BATCH_SIZE):
                 FROM news_articles
                 WHERE content IS NOT NULL
                   AND company_extraction_processed = FALSE
-                  AND created_at >= NOW() - INTERVAL '12 hours'
+                  AND created_at >= NOW() - INTERVAL '2 hours'
                   AND created_at <= NOW()
                 ORDER BY id
                 LIMIT %s

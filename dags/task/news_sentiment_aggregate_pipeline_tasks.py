@@ -1,5 +1,3 @@
-import logging
-
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import pendulum
@@ -7,8 +5,6 @@ import pendulum
 from core.database import DB_CONFIG
 from core.database import get_db_connection
 from utils.date_utils import get_date_range
-
-logger = logging.getLogger(__name__)
 
 AGGREGATE_PERIODS = {
     "DAILY": "day",
@@ -21,7 +17,6 @@ AGGREGATE_PERIODS = {
 # -------------------------
 def aggregate_sentiment_periods():
     execution_date = pendulum.now("Asia/Seoul").date()
-    logger.info(f"[DATE INFO] 기준 날짜 (KST): {execution_date}")
 
     results = []
 
