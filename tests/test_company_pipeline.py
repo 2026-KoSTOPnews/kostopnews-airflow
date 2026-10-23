@@ -20,8 +20,8 @@ def test_extract_and_store_companies_batches(monkeypatch):
             }
         }
 
-    def mock_get_articles(limit, offset):
-        calls.append((limit, offset))
+    def mock_get_articles(limit):
+        calls.append((limit))
         return batches.pop(0)
 
     def mock_extract(articles, companies):
@@ -58,11 +58,6 @@ def test_extract_and_store_companies_batches(monkeypatch):
 
     extract_and_store_companies()
 
-    assert calls == [
-        (50, 0),
-        (50, 50),
-        (50, 100),
-        (50, 150),
-    ]
+    assert calls == [50, 50, 50, 50]
 
     assert len(saved_results) == 3
