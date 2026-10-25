@@ -1,5 +1,7 @@
 import requests
 
+from psycopg2.extras import execute_values
+
 from core.config import settings
 from core.database import DB_CONFIG
 from core.database import get_db_connection
@@ -52,34 +54,46 @@ def store_news_keywords(**context):
     if not results:
         return
 
+    rows = []
+
+    for r in results:
+        if r.get("error"):
+            continue
+
+        article_id = r["article_id"]
+
+        for keyword in r.get("keywords", []):
+            if not keyword or not keyword.strip():
+                continue
+
+            rows.append((
+                article_id,
+                keyword.strip(),
+                settings.MODEL_VERSION,
+            ))
+
+    if not rows:
+        return
+
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                for r in results:
-                    if r.get("error"):
-                        continue
-
-                    article_id = r["article_id"]
-                    keywords = r.get("keywords", [])
-
-                    for keyword in keywords:
-                        if not keyword:
-                            continue
-
-                        cur.execute("""
-                            INSERT INTO news_keywords (
-                                article_id,
-                                keyword,
-                                model_version
-                            )
-                            VALUES (%s, %s, %s)
-                            ON CONFLICT (article_id, keyword)
-                            DO NOTHING
-                        """, (
+                if rows:
+                    execute_values(
+                        cur,
+                        """
+                        INSERT INTO news_keywords (
                             article_id,
-                            keyword.strip(),
-                            settings.MODEL_VERSION,
-                        ))
+                            keyword,
+                            model_version
+                        )
+                        VALUES %s
+                        ON CONFLICT (article_id, keyword)
+                        DO NOTHING
+                        """,
+                        rows,
+                        page_size=50,
+                    )
 
             conn.commit()
         except Exception:
