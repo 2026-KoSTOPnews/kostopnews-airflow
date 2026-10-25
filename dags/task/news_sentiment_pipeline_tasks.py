@@ -1,5 +1,7 @@
 import requests
 
+from psycopg2.extras import execute_values
+
 from core.config import settings
 from core.database import DB_CONFIG
 from core.database import get_db_connection
@@ -56,43 +58,51 @@ def store_news_sentiment(**context):
     if not results:
         return
 
+    rows = []
+
+    for r in results:
+        if r.get("error"):
+            continue
+
+        rows.append((
+            r["article_id"],
+            r["company_id"],
+            r["summary"],
+            r["sentiment"],
+            r["score"],
+            settings.MODEL_VERSION,
+        ))
+
+    if not rows:
+        return
+
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                for r in results:
-                    if r.get("error"):
-                        continue
-
-                    cur.execute(
-                        """
-                        INSERT INTO news_analysis (
-                            article_id,
-                            company_id,
-                            summary,
-                            sentiment,
-                            sentiment_score,
-                            model_version
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (article_id, company_id)
-                        DO UPDATE SET
-                            summary = EXCLUDED.summary,
-                            sentiment = EXCLUDED.sentiment,
-                            sentiment_score = EXCLUDED.sentiment_score,
-                            model_version = EXCLUDED.model_version
-                        """,
-                        (
-                            r["article_id"],
-                            r["company_id"],
-                            r["summary"],
-                            r["sentiment"],
-                            r["score"],
-                            settings.MODEL_VERSION,
-                        )
+                execute_values(
+                    cur,
+                    """
+                    INSERT INTO news_analysis (
+                        article_id,
+                        company_id,
+                        summary,
+                        sentiment,
+                        sentiment_score,
+                        model_version
                     )
+                    VALUES %s
+                    ON CONFLICT (article_id, company_id)
+                    DO UPDATE SET
+                        summary = EXCLUDED.summary,
+                        sentiment = EXCLUDED.sentiment,
+                        sentiment_score = EXCLUDED.sentiment_score,
+                        model_version = EXCLUDED.model_version
+                    """,
+                    rows,
+                    page_size=50,
+                )
 
             conn.commit()
-
         except Exception:
             conn.rollback()
             raise

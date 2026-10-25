@@ -1,31 +1,10 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from dags.services import postgres_service as db_service
 
 
-@pytest.fixture
-def mock_db(monkeypatch):
-    """DB 연결과 커서를 모킹."""
-    cursor = MagicMock()
-    connection = MagicMock()
-    connection.cursor.return_value.__enter__.return_value = cursor
-
-    context = MagicMock()
-    context.__enter__.return_value = connection
-
-    monkeypatch.setattr(
-        db_service,
-        "get_db_connection",
-        lambda: context,
-    )
-
-    return cursor, connection
-
-
 def test_get_articles_only_selects_unprocessed(mock_db):
-    """미처리 기사만 조회하는 SQL인지 확인."""
+    """미처리 기사만 조회하는 SQL인지 확인한다."""
     cursor, _ = mock_db
 
     cursor.fetchall.return_value = [
@@ -58,7 +37,7 @@ def test_get_articles_only_selects_unprocessed(mock_db):
 
 
 def test_get_articles_returns_empty_list(mock_db):
-    """미처리 기사가 없으면 빈 목록 반환."""
+    """미처리 기사가 없으면 빈 목록 반환한다."""
     cursor, _ = mock_db
     cursor.fetchall.return_value = []
 
@@ -68,7 +47,7 @@ def test_get_articles_returns_empty_list(mock_db):
 
 
 def test_mark_articles_processed(mock_db):
-    """지정한 기사 ID들을 완료 처리하고 커밋."""
+    """지정한 기사 ID들을 완료 처리하고 커밋한다."""
     cursor, connection = mock_db
 
     db_service.mark_articles_processed([1, 2, 3])
@@ -82,7 +61,7 @@ def test_mark_articles_processed(mock_db):
 
 
 def test_mark_articles_processed_with_empty_ids(mock_db):
-    """ID가 없으면 DB 작업을 하지 않음."""
+    """ID가 없으면 DB 작업을 하지 않는다."""
     cursor, connection = mock_db
 
     db_service.mark_articles_processed([])
@@ -92,7 +71,7 @@ def test_mark_articles_processed_with_empty_ids(mock_db):
 
 
 def test_mark_articles_processed_rolls_back_on_error(mock_db):
-    """완료 처리 SQL 실패 시 롤백하고 예외 전달."""
+    """완료 처리 SQL 실패 시 롤백하고 예외 전달한다."""
     cursor, connection = mock_db
     cursor.execute.side_effect = RuntimeError("DB 오류")
 
@@ -104,7 +83,7 @@ def test_mark_articles_processed_rolls_back_on_error(mock_db):
 
 
 def test_store_articles_returns_empty_for_no_input(mock_db):
-    """저장할 기사가 없으면 빈 목록 반환."""
+    """저장할 기사가 없으면 빈 목록 반환한다."""
     cursor, connection = mock_db
 
     result = db_service.store_articles([])
@@ -115,7 +94,7 @@ def test_store_articles_returns_empty_for_no_input(mock_db):
 
 
 def test_store_articles_inserts_and_returns_ids(mock_db):
-    """기사 저장 후 ID와 기본 정보를 반환."""
+    """기사 저장 후 ID와 기본 정보를 반환한다."""
     cursor, connection = mock_db
     cursor.fetchone.side_effect = [(101,), (102,)]
 
@@ -143,7 +122,7 @@ def test_store_articles_inserts_and_returns_ids(mock_db):
 
 
 def test_store_articles_rolls_back_on_error(mock_db):
-    """기사 저장 중 오류가 나면 롤백."""
+    """기사 저장 중 오류가 나면 롤백한다."""
     cursor, connection = mock_db
     cursor.execute.side_effect = RuntimeError("INSERT 실패")
 
@@ -164,7 +143,7 @@ def test_store_articles_rolls_back_on_error(mock_db):
 
 
 def test_store_company_mentions_with_empty_input(mock_db):
-    """저장할 매칭 결과가 없으면 DB 작업을 하지 않음."""
+    """저장할 매칭 결과가 없으면 DB 작업을 하지 않는다."""
     cursor, connection = mock_db
 
     db_service.store_company_mentions([])
@@ -174,7 +153,7 @@ def test_store_company_mentions_with_empty_input(mock_db):
 
 
 def test_store_company_mentions_inserts_multiple_companies(mock_db):
-    """한 기사에 여러 기업의 매칭 결과를 저장."""
+    """한 기사에 여러 기업의 매칭 결과를 저장한다."""
     cursor, connection = mock_db
     cursor.fetchall.return_value = [
         (101, "https://example.com/1")
@@ -210,7 +189,7 @@ def test_store_company_mentions_inserts_multiple_companies(mock_db):
 
 
 def test_store_company_mentions_rolls_back_on_error(mock_db):
-    """기업 언급 저장 중 오류가 나면 롤백."""
+    """기업 언급 저장 중 오류가 나면 롤백한다."""
     cursor, connection = mock_db
     cursor.execute.side_effect = RuntimeError("INSERT 실패")
 
