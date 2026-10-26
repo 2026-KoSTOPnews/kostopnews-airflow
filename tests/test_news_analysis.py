@@ -115,15 +115,19 @@ def test_store_news_sentiment_batches(monkeypatch):
     assert "rolled_back" not in captured
 
 
-def test_save_keywords_batches(monkeypatch):
-    """키워드 분석 결과의 배치 저장, 오류·빈 키워드 제외 및 커밋 여부를 검증한다."""
+def test_store_news_keywords_batches(monkeypatch):
+    """키워드 배치 저장 시 오류 및 빈 키워드 제외와 커밋 여부를 검증한다."""
     results = [
         {"article_id": 1, "keywords": ["삼성전자", "반도체"]},
         {"article_id": 2, "keywords": ["AI", "", "  "]},
-        {"article_id": 3, "keywords": ["오류 키워드"], "error": "API error"},
+        {
+            "article_id": 3,
+            "keywords": ["오류 키워드"],
+            "error": "API error",
+        },
     ]
 
-    # analyze_news의 실제 XCom 반환 구조
+    # analyze_news의 실제 반환 구조
     xcom_result = {
         "sentiment_results": [],
         "keyword_results": results,
@@ -154,15 +158,15 @@ def test_save_keywords_batches(monkeypatch):
         def rollback(self):
             captured["rolled_back"] = True
 
-    def mock_execute_values(cur, query, rows, page_size):
-        captured["rows"] = rows
-        captured["page_size"] = page_size
-        captured["query"] = query
-
     def mock_xcom_pull(self, task_ids, key=None):
         captured["task_ids"] = task_ids
         captured["key"] = key
         return xcom_result
+
+    def mock_execute_values(cur, query, rows, page_size):
+        captured["rows"] = rows
+        captured["page_size"] = page_size
+        captured["query"] = query
 
     monkeypatch.setattr(
         news_analysis_pipeline_tasks,
@@ -199,6 +203,6 @@ def test_save_keywords_batches(monkeypatch):
     assert "ON CONFLICT (article_id, keyword)" in captured["query"]
     assert "DO NOTHING" in captured["query"]
 
-    # 트랜잭션 커밋 검증
+    # 커밋 검증
     assert captured["committed"] is True
     assert "rolled_back" not in captured

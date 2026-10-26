@@ -13,40 +13,14 @@ def fetch_news_data():
             m.company_id,
             c.name AS company_name,
             a.title,
-            a.content,
-            (na.article_id IS NULL) AS needs_sentiment,
-            (
-                EXISTS (
-                    SELECT 1
-                    FROM news_analysis existing_na
-                    WHERE existing_na.article_id = a.id
-                )
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM news_keywords nk
-                    WHERE nk.article_id = a.id
-                )
-            ) AS needs_keywords
+            a.content
         FROM news_articles a
         JOIN news_mentions m ON a.id = m.article_id
         JOIN companies c ON m.company_id = c.id
         LEFT JOIN news_analysis na
             ON na.article_id = a.id
             AND na.company_id = m.company_id
-        WHERE
-            na.article_id IS NULL
-            OR (
-                EXISTS (
-                    SELECT 1
-                    FROM news_analysis existing_na
-                    WHERE existing_na.article_id = a.id
-                )
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM news_keywords nk
-                    WHERE nk.article_id = a.id
-                )
-            )
+        WHERE na.article_id IS NULL
         ORDER BY a.id, m.company_id
         LIMIT 50;
     """
@@ -56,39 +30,30 @@ def fetch_news_data():
             cur.execute(query)
             rows = cur.fetchall()
 
-    sentiment_data = []
-    keyword_data = {}
+    sentiment_data = [
+        {
+            "article_id": article_id,
+            "company_id": company_id,
+            "company_name": company_name,
+            "title": title,
+            "content": content,
+        }
+        for article_id, company_id, company_name, title, content in rows
+    ]
 
-    for row in rows:
-        (
-            article_id,
-            company_id,
-            company_name,
-            title,
-            content,
-            needs_sentiment,
-            needs_keywords,
-        ) = row
-
-        if needs_sentiment:
-            sentiment_data.append({
-                "article_id": article_id,
-                "company_id": company_id,
-                "company_name": company_name,
-                "title": title,
-                "content": content,
-            })
-
-        if needs_keywords:
-            keyword_data[article_id] = {
-                "article_id": article_id,
-                "title": title,
-                "content": content,
-            }
+    # 키워드는 기사 단위로 추출하므로 article_id 기준 중복 제거
+    keyword_data = list({
+        item["article_id"]: {
+            "article_id": item["article_id"],
+            "title": item["title"],
+            "content": item["content"],
+        }
+        for item in reversed(sentiment_data)
+    }.values())
 
     return {
         "sentiment_data": sentiment_data,
-        "keyword_data": list(keyword_data.values()),
+        "keyword_data": keyword_data,
     }
 
 # -------------------------
