@@ -5,10 +5,6 @@ from psycopg2.pool import ThreadedConnectionPool, PoolError
 
 from core.config import settings
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 DB_CONFIG = {
     "host": settings.POSTGRES_HOST,
     "database": settings.POSTGRES_DB,
@@ -42,11 +38,6 @@ def getconn_with_wait(timeout=30, retry_interval=0.1):
             remaining = deadline - time.monotonic()
 
             if remaining <= 0:
-                logger.error(
-                    "DB connection pool exhausted: "
-                    "failed to acquire a connection within %s seconds",
-                    timeout,
-                )
                 raise TimeoutError(
                     f"DB connection unavailable after {timeout} seconds"
                 ) from exc
