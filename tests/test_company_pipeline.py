@@ -2,6 +2,7 @@ from task.news_pipeline_tasks import extract_and_store_companies
 
 
 def test_extract_and_store_companies_batches(monkeypatch):
+    """기업 추출 작업이 기사를 배치별로 처리하고 저장 및 처리 완료 상태를 갱신하는지 검증한다."""
     batches = [
         [{"id": i} for i in range(50)],
         [{"id": i} for i in range(50, 100)],

@@ -39,7 +39,6 @@ def extract_companies(articles, companies):
         matches = []
 
         for company_name, info in companies.items():
-
             score = calculate_company_score(
                 text=text,
                 aliases=info["aliases"]

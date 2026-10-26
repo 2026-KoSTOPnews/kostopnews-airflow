@@ -1,4 +1,5 @@
 from dateutil import parser
+from psycopg2.extras import execute_values
 
 from core.database import DB_CONFIG
 from core.database import get_db_connection
@@ -12,49 +13,59 @@ def store_articles(articles):
     if not articles:
         return []
 
+    values = []
+
+    for article in articles:
+        pub_date = None
+
+        if article.get("pub_date"):
+            try:
+                pub_date = parser.parse(article["pub_date"])
+            except (ValueError, TypeError, OverflowError):
+                pub_date = None
+
+        values.append((
+            article["title"],
+            article["link"],
+            pub_date,
+            article["source"],
+            article.get("content", ""),
+        ))
+
     saved_articles = []
 
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                for a in articles:
-                    pub_date = None
-
-                    if a.get("pub_date"):
-                        try:
-                            pub_date = parser.parse(a["pub_date"])
-                        except Exception:
-                            pub_date = None
-
-                    cur.execute("""
-                        INSERT INTO news_articles (
-                            title,
-                            link,
-                            pub_date,
-                            source,
-                            content
-                        )
-                        VALUES (%s, %s, %s, %s, %s)
-                        ON CONFLICT (link)
-                        DO UPDATE SET
-                            link = EXCLUDED.link
-                        RETURNING id
-                    """, (
-                        a["title"],
-                        a["link"],
+                execute_values(
+                    cur,
+                    """
+                    INSERT INTO news_articles (
+                        title,
+                        link,
                         pub_date,
-                        a["source"],
-                        a.get("content", "")
-                    ))
+                        source,
+                        content
+                    )
+                    VALUES %s
+                    ON CONFLICT (link)
+                    DO UPDATE SET
+                        link = EXCLUDED.link
+                    RETURNING id, title, link, source
+                    """,
+                    values,
+                    page_size=BATCH_SIZE,
+                )
 
-                    article_id = cur.fetchone()[0]
-
-                    saved_articles.append({
-                        "id": article_id,
-                        "title": a["title"],
-                        "link": a["link"],
-                        "source": a["source"]
-                    })
+                saved_articles = [
+                    {
+                        "id": row[0],
+                        "title": row[1],
+                        "link": row[2],
+                        "source": row[3],
+                    }
+                    for row in cur.fetchall()
+                ]
 
             conn.commit()
         except Exception:
@@ -73,14 +84,11 @@ def store_company_mentions(data):
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                links = []
-
-                for item in data:
-                    article = item.get("article", {})
-                    link = article.get("link")
-
-                    if link:
-                        links.append(link)
+                links = [
+                    item.get("article", {}).get("link")
+                    for item in data
+                    if item.get("article", {}).get("link")
+                ]
 
                 if not links:
                     return
@@ -89,12 +97,14 @@ def store_company_mentions(data):
                     SELECT id, link
                     FROM news_articles
                     WHERE link = ANY(%s)
-                """, (links,))
+                """, (list(set(links)),))
 
                 link_map = {
                     link: article_id
                     for article_id, link in cur.fetchall()
                 }
+
+                values = []
 
                 for item in data:
                     article = item.get("article", {})
@@ -103,29 +113,32 @@ def store_company_mentions(data):
                     if not link:
                         continue
 
-                    matches = item.get("matches", [])
-                    if not matches:
-                        continue
-
                     article_id = link_map.get(link)
-
-                    if not article_id:
+                    if article_id is None:
                         continue
 
-                    for m in matches:
-                        cur.execute("""
-                            INSERT INTO news_mentions (
-                                article_id,
-                                company_id,
-                                confidence
-                            )
-                            VALUES (%s, %s, %s)
-                            ON CONFLICT DO NOTHING
-                        """, (
+                    for match in item.get("matches", []):
+                        values.append((
                             article_id,
-                            m["company_id"],
-                            m["score"]
+                            match["company_id"],
+                            match["score"],
                         ))
+
+                if values:
+                    execute_values(
+                        cur,
+                        """
+                        INSERT INTO news_mentions (
+                            article_id,
+                            company_id,
+                            confidence
+                        )
+                        VALUES %s
+                        ON CONFLICT DO NOTHING
+                        """,
+                        values,
+                        page_size=BATCH_SIZE,
+                    )
 
             conn.commit()
         except Exception:
