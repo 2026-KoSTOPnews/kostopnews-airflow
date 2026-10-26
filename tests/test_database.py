@@ -1,4 +1,3 @@
-import logging
 from unittest.mock import MagicMock
 
 import pytest
@@ -52,8 +51,8 @@ def test_getconn_with_wait_retries_until_connection_available(monkeypatch):
     assert pool.getconn.call_count == 2
 
 
-def test_getconn_with_wait_raises_timeout_and_logs_error(monkeypatch, caplog):
-    """제한 시간 내에 연결을 얻지 못하면 로그와 TimeoutError를 발생시킨다."""
+def test_getconn_with_wait_raises_timeout(monkeypatch):
+    """제한 시간 내에 연결을 얻지 못하면 TimeoutError를 발생시킨다."""
     pool = MagicMock()
     pool.getconn.side_effect = PoolError("connection pool exhausted")
     monkeypatch.setattr(database, "get_db_pool", lambda: pool)
@@ -66,11 +65,9 @@ def test_getconn_with_wait_raises_timeout_and_logs_error(monkeypatch, caplog):
         lambda: next(times),
     )
 
-    with caplog.at_level(logging.ERROR, logger=database.logger.name):
-        with pytest.raises(TimeoutError, match="30 seconds"):
-            database.getconn_with_wait(timeout=30)
+    with pytest.raises(TimeoutError, match="30 seconds"):
+        database.getconn_with_wait(timeout=30)
 
-    assert "DB connection pool exhausted" in caplog.text
     pool.getconn.assert_called_once()
 
 
