@@ -1,3 +1,5 @@
+from psycopg2.extras import execute_values
+
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import pendulum
@@ -159,47 +161,52 @@ def store_sentiment_aggregate(**context):
     if not results:
         return
 
+    values = [
+        (
+            result["company_id"],
+            result["period_type"],
+            result["period_start"],
+            result["positive_count"],
+            result["negative_count"],
+            result["neutral_count"],
+            result["sentiment_score"],
+        )
+        for result in results
+    ]
+
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                for result in results:
-                    cur.execute(
-                        """
-                        INSERT INTO news_sentiment_aggregate (
-                            company_id,
-                            period_type,
-                            period_start,
-                            positive_count,
-                            negative_count,
-                            neutral_count,
-                            sentiment_score
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (
-                            company_id,
-                            period_type,
-                            period_start
-                        )
-                        DO UPDATE SET
-                            positive_count = EXCLUDED.positive_count,
-                            negative_count = EXCLUDED.negative_count,
-                            neutral_count = EXCLUDED.neutral_count,
-                            sentiment_score = EXCLUDED.sentiment_score,
-                            updated_at = NOW()
-                        """,
-                        (
-                            result["company_id"],
-                            result["period_type"],
-                            result["period_start"],
-                            result["positive_count"],
-                            result["negative_count"],
-                            result["neutral_count"],
-                            result["sentiment_score"],
-                        )
+                execute_values(
+                    cur,
+                    """
+                    INSERT INTO news_sentiment_aggregate (
+                        company_id,
+                        period_type,
+                        period_start,
+                        positive_count,
+                        negative_count,
+                        neutral_count,
+                        sentiment_score
                     )
+                    VALUES %s
+                    ON CONFLICT (
+                        company_id,
+                        period_type,
+                        period_start
+                    )
+                    DO UPDATE SET
+                        positive_count = EXCLUDED.positive_count,
+                        negative_count = EXCLUDED.negative_count,
+                        neutral_count = EXCLUDED.neutral_count,
+                        sentiment_score = EXCLUDED.sentiment_score,
+                        updated_at = NOW()
+                    """,
+                    values,
+                    page_size=50,
+                )
 
             conn.commit()
-
         except Exception:
             conn.rollback()
             raise

@@ -3,9 +3,7 @@ from airflow.operators.python import PythonOperator
 import pendulum
 from datetime import timedelta
 
-from task.news_analysis_pipeline_tasks import analyze_news
-from task.news_sentiment_pipeline_tasks import store_news_sentiment
-from task.news_keyword_pipeline_tasks import store_news_keywords
+from task.news_analysis_pipeline_tasks import analyze_news, store_news_sentiment, store_news_keywords
 
 with DAG(
     dag_id="news_analysis_pipeline",

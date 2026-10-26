@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from dags.services import postgres_service as db_service
@@ -93,10 +95,15 @@ def test_store_articles_returns_empty_for_no_input(mock_db):
     connection.commit.assert_not_called()
 
 
-def test_store_articles_inserts_and_returns_ids(mock_db):
+@patch("dags.services.postgres_service.execute_values")
+def test_store_articles_inserts_and_returns_ids(mock_execute_values, mock_db):
     """기사 저장 후 ID와 기본 정보를 반환한다."""
     cursor, connection = mock_db
-    cursor.fetchone.side_effect = [(101,), (102,)]
+
+    cursor.fetchall.return_value = [
+        (101, "기사 1", "https://example.com/1", "test"),
+        (102, "기사 2", "https://example.com/2", "test"),
+    ]
 
     articles = [
         {
@@ -115,16 +122,21 @@ def test_store_articles_inserts_and_returns_ids(mock_db):
 
     result = db_service.store_articles(articles)
 
+    mock_execute_values.assert_called_once()
+    args, kwargs = mock_execute_values.call_args
+
+    assert len(args[2]) == 2
+    assert kwargs["page_size"] == 50
     assert [item["id"] for item in result] == [101, 102]
     assert len(result) == 2
-    assert cursor.execute.call_count == 2
     connection.commit.assert_called_once()
+    connection.rollback.assert_not_called()
 
 
-def test_store_articles_rolls_back_on_error(mock_db):
+@patch("dags.services.postgres_service.execute_values", side_effect=RuntimeError("INSERT 실패"))
+def test_store_articles_rolls_back_on_error(mock_execute_values, mock_db):
     """기사 저장 중 오류가 나면 롤백한다."""
-    cursor, connection = mock_db
-    cursor.execute.side_effect = RuntimeError("INSERT 실패")
+    _, connection = mock_db
 
     articles = [
         {
@@ -152,9 +164,11 @@ def test_store_company_mentions_with_empty_input(mock_db):
     connection.commit.assert_not_called()
 
 
-def test_store_company_mentions_inserts_multiple_companies(mock_db):
+@patch("dags.services.postgres_service.execute_values")
+def test_store_company_mentions_inserts_multiple_companies(mock_execute_values, mock_db):
     """한 기사에 여러 기업의 매칭 결과를 저장한다."""
     cursor, connection = mock_db
+
     cursor.fetchall.return_value = [
         (101, "https://example.com/1")
     ]
@@ -173,19 +187,22 @@ def test_store_company_mentions_inserts_multiple_companies(mock_db):
 
     db_service.store_company_mentions(data)
 
-    # 첫 번째 쿼리는 기사 ID 조회,
-    # 다음 두 쿼리는 기업별 mention INSERT
-    assert cursor.execute.call_count == 3
+    # 기사 ID 조회는 일반 execute로 한 번만 수행
+    assert cursor.execute.call_count == 1
+
+    sql, params = cursor.execute.call_args.args
+    assert "SELECT id, link" in sql
+    assert params == (["https://example.com/1"],)
+
+    # 두 기업의 멘션을 한 번의 배치 INSERT로 저장
+    mock_execute_values.assert_called_once()
+    args, kwargs = mock_execute_values.call_args
+
+    assert args[2] == [(101, 1, 0.8), (101, 2, 0.9)]
+    assert kwargs["page_size"] == 50
+
     connection.commit.assert_called_once()
-
-    insert_calls = [
-        c for c in cursor.execute.call_args_list
-        if "INSERT INTO news_mentions" in c.args[0]
-    ]
-
-    assert len(insert_calls) == 2
-    assert insert_calls[0].args[1] == (101, 1, 0.8)
-    assert insert_calls[1].args[1] == (101, 2, 0.9)
+    connection.rollback.assert_not_called()
 
 
 def test_store_company_mentions_rolls_back_on_error(mock_db):
