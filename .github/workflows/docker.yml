@@ -83,7 +83,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/kostopnews/kostopnews-airflow
+            cd ~/kostopnews-airflow
             git pull origin main
             docker compose pull
             docker compose up -d
