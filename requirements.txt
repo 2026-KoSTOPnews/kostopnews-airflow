@@ -7,3 +7,4 @@ python-dotenv
 requests
 rapidfuzz
 trafilatura
+kiwipiepy==0.18.0
