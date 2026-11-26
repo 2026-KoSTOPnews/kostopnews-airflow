@@ -95,6 +95,44 @@ kostopnews-airflow/
 
 ---
 
+## 🔍 Data Processing Strategy
+
+뉴스 데이터의 수집부터 분석 및 시각화 데이터 생성까지 각 단계의 목적에 맞는 기술과 처리 방식을 적용했습니다.
+
+### 1. News Collection
+- RSS 피드를 활용한 기업 관련 뉴스 수집
+- 중복 기사 제거를 통한 데이터 정합성 확보
+- 수집한 뉴스 데이터 PostgreSQL 저장
+
+### 2. Company Matching
+- **Rule-based Matching with Alias & Keyword Scoring**
+- 기업별 별칭(Alias)을 활용한 뉴스 본문 내 기업명 탐색
+- 기업 활동 및 주식 관련 키워드에 가중치를 적용한 매칭 점수 계산
+- 매칭 점수를 기반으로 뉴스와 기업 간 연관성 평가
+
+### 3. AI-based News Analysis
+- **LLM-based Sentiment Analysis**
+  - Upstage Solar를 활용한 뉴스 감성 분석
+  - 뉴스 내용에 따른 긍정·부정·중립 감성 분류
+- **LLM-based Keyword Extraction**
+  - 뉴스 본문에서 주요 키워드 추출
+  - 추출한 키워드를 해시태그 형태로 제공
+  - 키워드별 출현 빈도 집계를 통한 주요 키워드 분석
+
+### 4. Word Cloud Generation
+- **Morphological Analysis**
+- Kiwi 형태소 분석기를 활용한 뉴스 본문 형태소 분석
+- 명사 중심의 단어 추출 및 불필요한 단어 필터링
+- 뉴스 기사에 등장한 단어별 출현 빈도 집계
+- 단어 출현 빈도를 기반으로 워드 클라우드 데이터 생성
+
+### 5. Data Aggregation
+- 일간·주간·월간 단위 감성 데이터 집계
+- 기간별 주요 키워드 및 출현 빈도 집계
+- 대시보드와 워드 클라우드 시각화를 위한 데이터 가공
+
+---
+
 ## 🚀 Deployment
 
 Docker Compose를 사용하여 OCI 인스턴스에서 Airflow Webserver와 Scheduler를 운영합니다.
@@ -102,8 +140,11 @@ Docker Compose를 사용하여 OCI 인스턴스에서 Airflow Webserver와 Sched
 - **Airflow Metadata DB**: 별도 OCI 인스턴스의 Docker 기반 PostgreSQL
 - **Application DB**: Supabase PostgreSQL
 - **Executor**: LocalExecutor
+- **Swap Space**: 6GB 구성으로 메모리 부족 상황 완화
 
-제한된 인스턴스 자원 내에서 안정적으로 운영하기 위해 Webserver Worker, Scheduler Parsing Process, Task 동시 실행 수 및 데이터베이스 연결 Pool을 제한했습니다.
+1GB RAM의 제한된 인스턴스에서 Airflow Webserver와 Scheduler를 함께 운영하면서 발생하는 메모리 부족 문제를 완화하기 위해 Swap을 구성했습니다.
+
+또한 안정적인 운영을 위해 Webserver Worker, Scheduler Parsing Process, Task 동시 실행 수와 SQLAlchemy 데이터베이스 연결 Pool을 제한했습니다.
 
 ---
 
@@ -133,7 +174,6 @@ GitHub Actions를 활용하여 테스트 및 Docker 이미지 빌드·배포 자
 Docker Hub에 다음 태그로 이미지를 관리합니다.
 
 - `latest`: 최신 빌드 이미지
-- `{commit-sha}`: Git 커밋별 이미지 버전
 
 ### 🚀 Deployment
 
