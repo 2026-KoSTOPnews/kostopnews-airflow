@@ -51,9 +51,9 @@ Apache Airflow를 활용하여 뉴스 수집 및 분석 작업을 스케줄링�
 - 중복 기사 제거
 - PostgreSQL 데이터 저장
 
-### 2. 🏢 Company Extraction
-- 뉴스 본문에서 관련 기업 추출
-- 뉴스와 기업 간 연관 정보 관리
+### 2. 🏢 Company Matching
+- 기업별 별칭과 주식 관련 키워드를 활용한 뉴스·기업 매칭
+- 매칭 점수 기반 기업 연관성 평가
 
 ### 3. 🤖 AI News Analysis
 - LLM 기반 뉴스 감성 분석
@@ -117,7 +117,7 @@ kostopnews-airflow/
 - **LLM-based Keyword Extraction**
   - 뉴스 본문에서 주요 키워드 추출
   - 추출한 키워드를 해시태그 형태로 제공
-  - 키워드별 출현 빈도 집계를 통한 주요 키워드 분석
+  - 추출된 키워드의 빈도 집계를 통한 주요 키워드 통계 생성
 
 ### 4. Word Cloud Generation
 - **Morphological Analysis**
