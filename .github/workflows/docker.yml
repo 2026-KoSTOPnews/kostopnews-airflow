@@ -47,6 +47,7 @@ jobs:
           POSTGRES_DB: test
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
+          AIRFLOW_API_KEY: ${{ secrets.AIRFLOW_API_KEY }}
         ports:
           - 5432:5432
         options: >-
