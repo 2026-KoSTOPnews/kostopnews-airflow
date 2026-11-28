@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from dateutil import parser
 from psycopg2.extras import execute_values
 
@@ -5,6 +7,7 @@ from core.database import DB_CONFIG
 from core.database import get_db_connection
 
 BATCH_SIZE = 50
+KST = ZoneInfo("Asia/Seoul")
 
 # -------------------------
 # 기사를 DB에 저장
@@ -20,7 +23,16 @@ def store_articles(articles):
 
         if article.get("pub_date"):
             try:
-                pub_date = parser.parse(article["pub_date"])
+                parsed_date = parser.parse(article["pub_date"])
+
+                if parsed_date.tzinfo is not None:
+                    pub_date = (
+                        parsed_date
+                        .astimezone(KST)
+                        .replace(tzinfo=None)
+                    )
+                else:
+                    pub_date = parsed_date
             except (ValueError, TypeError, OverflowError):
                 pub_date = None
 
@@ -50,7 +62,7 @@ def store_articles(articles):
                     VALUES %s
                     ON CONFLICT (link)
                     DO UPDATE SET
-                        link = EXCLUDED.link
+                        pub_date = COALESCE(EXCLUDED.pub_date, news_articles.pub_date)
                     RETURNING id, title, link, source
                     """,
                     values,

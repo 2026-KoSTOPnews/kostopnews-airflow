@@ -10,7 +10,9 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_PORT: int
 
+    # FastAPI
     FASTAPI_BASE_URL: str
+    AIRFLOW_API_KEY: str
 
     MODEL_VERSION: str = "gemini-2.5-flash-lite"
 
