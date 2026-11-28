@@ -15,9 +15,14 @@ def analyze_company_daily():
 
     today = pendulum.now("Asia/Seoul").date()
 
+    if today.weekday() == 0:  # 월요일
+        previous_day = today - timedelta(days=3)
+    else:
+        previous_day = today - timedelta(days=1)
+
     target_dates = [
-        (today - timedelta(days=1)).isoformat(),
-        (today - timedelta(days=4)).isoformat(),
+        today.isoformat(),
+        previous_day.isoformat(),
     ]
 
     headers = {
